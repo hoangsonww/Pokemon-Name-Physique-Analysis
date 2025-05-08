@@ -1,0 +1,76 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{verbatim}
+
+\title{Pokémon Name \& Physique Analysis}
+\author{David Nguyen, Rosser Martin, Ayushi}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This report explores patterns in English and Japanese Pokémon names, examines whether “heavy” consonants (b, d, f, v, z) correlate with weight, and builds regression models predicting weight from height and Attack.
+\end{abstract}
+
+\section{Data \& Methods}
+We loaded \texttt{pokemon-advanced.csv} (1,008 entries) containing English and Japanese names and physical stats. Name patterns were extracted via regular expressions (`stringr`). Group comparisons used two‐sample t‐tests on weight. Regression models were fit using `lm()`.
+
+\section{Name Patterns}
+\subsection{Double Vowels}
+Exactly two identical vowels in a row:
+\begin{verbatim}
+`r paste(two_vowels, collapse=", ")`
+\end{verbatim}
+
+\subsection{Three Consecutive Consonants}
+\begin{verbatim}
+`r paste(three_cons, collapse=", ")`
+\end{verbatim}
+
+\subsection{Alternating C–V Sequences}
+\begin{verbatim}
+`r paste(alt_cv, collapse=", ")`
+\end{verbatim}
+
+\subsection{Start Vowel – End Consonant}
+\begin{verbatim}
+`r paste(vowel_cons, collapse=", ")`
+\end{verbatim}
+
+\section{Weight Comparisons}
+
+\subsection{English Name Grouping}
+Heavy‐consonant group vs. others:
+\begin{verbatim}
+`r t_eng`
+\end{verbatim}
+
+\subsection{Japanese Name Grouping}
+\begin{verbatim}
+`r t_jp`
+\end{verbatim}
+
+\section{Regression Models}
+
+\subsection{Weight vs.\ Height}
+\begin{verbatim}
+`r capture.output(summary(model1))`
+\end{verbatim}
+
+\subsection{Weight vs.\ Height + Attack}
+\begin{verbatim}
+`r capture.output(summary(model2))`
+\end{verbatim}
+
+\section{Conclusions}
+\begin{itemize}
+  \item Certain name‐pattern features (double vowels, consonant clusters) are rare.  
+  \item T‐tests yielded \textit{p}-values of `r signif(t_eng$p.value,3)` (English) and `r signif(t_jp$p.value,3)` (Japanese), indicating whether “heavy” consonants correlate with weight.  
+  \item Regression R² increased from `r round(summary(model1)$r.squared,2)` to `r round(summary(model2)$r.squared,2)` when adding Attack, showing improved predictive power.
+\end{itemize}
+
+\end{document}
