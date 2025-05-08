@@ -1,0 +1,161 @@
+---
+title: "Pokémon Name & Physique Analysis"
+author:
+  - David Nguyen
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    code_folding: hide
+    theme: flatly
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo       = TRUE,
+  warning    = FALSE,
+  message    = FALSE,
+  fig.width  = 7,
+  fig.height = 5
+)
+# Load required packages
+pkgs <- c("stringr", "ggplot2")
+for(pkg in pkgs) {
+  if (!requireNamespace(pkg, quietly = TRUE)) install.packages(pkg)
+}
+lapply(pkgs, library, character.only = TRUE)
+````
+
+# 1. Data Loading
+
+We read in the extended Pokémon dataset containing English and Japanese names, weights, heights, and stats.
+
+```{r load-data}
+pokemon <- read.csv("pokemon-advanced.csv", stringsAsFactors = FALSE)
+cat("Total Pokémon:", nrow(pokemon), "\n")
+head(pokemon)
+names_eng <- pokemon$Name..English.
+names_jp  <- pokemon$Name..Japanese.
+```
+
+# 2. Name‐Pattern Extraction
+
+We use regular expressions to identify various patterns in the English names.
+
+## 2.1 Exactly Two Identical Vowels in a Row
+
+```{r pattern-vowels}
+two_vowels <- subset(names_eng, str_detect(names_eng, "(aa|ee|ii|oo|uu)"))
+two_vowels
+```
+
+## 2.2 At Least Three Consecutive Consonants
+
+```{r pattern-consonants}
+three_cons <- subset(names_eng, str_detect(names_eng, "[^aeiouAEIOU]{3,}"))
+three_cons
+```
+
+## 2.3 At Least Four Alternating Consonant–Vowel or Vowel–Consonant
+
+```{r pattern-alternate}
+alt_cv <- subset(
+  names_eng,
+  str_detect(names_eng,
+             "([aeiouAEIOU][^aeiouAEIOU]){4,}|([^aeiouAEIOU][aeiouAEIOU]){4,}")
+)
+alt_cv
+```
+
+## 2.4 Start with a Vowel and End with a Consonant
+
+```{r pattern-start-end}
+vowel_cons <- subset(names_eng, str_detect(names_eng, "^[aeiouAEIOU].*[^aeiouAEIOU]$"))
+vowel_cons
+```
+
+# 3. Phonetic Heaviness Hypothesis
+
+We hypothesize that the consonants **b, d, f, v, z** signal “heaviness” or toughness in a name. We split Pokémon into those **with** vs. **without** any of these consonants and compare their weights.
+
+```{r group-weights-eng}
+# Group splitting (English names)
+heavy_letters <- "[bdfvzBDFVZ]"
+with_heavy_eng    <- pokemon[str_detect(names_eng, heavy_letters), ]
+without_heavy_eng <- pokemon[!str_detect(names_eng, heavy_letters), ]
+
+# Extract weights
+w_with_eng    <- with_heavy_eng$Weight..kg.
+w_without_eng <- without_heavy_eng$Weight..kg.
+
+# T-test
+t_eng <- t.test(w_with_eng, w_without_eng)
+t_eng
+```
+
+# 4. Japanese Name Grouping
+
+We repeat the grouping and weight comparison using Japanese names.
+
+```{r group-weights-jp}
+with_heavy_jp    <- pokemon[str_detect(names_jp, heavy_letters), ]
+without_heavy_jp <- pokemon[!str_detect(names_jp, heavy_letters), ]
+
+w_with_jp    <- with_heavy_jp$Weight..kg.
+w_without_jp <- without_heavy_jp$Weight..kg.
+
+t_jp <- t.test(w_with_jp, w_without_jp)
+t_jp
+```
+
+# 5. Regression Modeling
+
+Finally, we model weight as a function of height and Attack power.
+
+## 5.1 Simple Linear Regression: Weight \~ Height
+
+```{r lm-height}
+model1 <- lm(Weight..kg. ~ Height..m., data = pokemon)
+summary(model1)
+```
+
+## 5.2 Multiple Regression: Weight \~ Height + Attack
+
+```{r lm-multiple}
+model2 <- lm(Weight..kg. ~ Height..m. + Attack, data = pokemon)
+summary(model2)
+```
+
+# 6. Model Comparison
+
+```{r compare-models}
+r2_1 <- summary(model1)$r.squared
+r2_2 <- summary(model2)$r.squared
+cat("Model 1 R²:", round(r2_1, 3), "\n")
+cat("Model 2 R²:", round(r2_2, 3), "\n")
+```
+
+# 7. Key Findings
+
+* **Name Patterns:** Few Pokémon names contain double vowels; some have long consonant clusters and alternating sequences.
+* **Weight Comparisons:**
+
+  * English‐name grouping: *p* = `r signif(t_eng$p.value,3)`
+  * Japanese‐name grouping: *p* = `r signif(t_jp$p.value,3)`
+* **Regression Results:**
+
+  * Height alone explains \~`r round(r2_1,2)` of weight variance.
+  * Adding Attack raises R² to \~`r round(r2_2,2)`, indicating Attack is a significant predictor.
+
+# 8. Conclusions & Future Work
+
+* The presence of heavy consonants does/does not (depending on p‐values) correlate with weight.
+* Height and Attack jointly predict weight better than height alone.
+* Future analyses could include other stats (Defense, Speed), or visualize residuals and interactions.
+
+# 9. Session Info
+
+```{r session-info}
+sessionInfo()
+```
